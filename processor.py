@@ -1,59 +1,32 @@
-import numpy as np
+import yt_dlp
+import os
+import time
+import glob
 from moviepy import VideoFileClip
+import numpy as np
 
-def analizar_puntuacion_viral(video):
-    """Simula el algoritmo de OpusClip puntuando segmentos del video."""
-    if video.audio is None:
-        return np.zeros(int(video.duration))
-        
-    fps_audio = 44100
-    audio_frames = video.audio.to_soundarray(fps=fps_audio)
-    
-    energia = np.sqrt(np.mean(audio_frames**2, axis=1))
-    
-    puntuaciones = []
-    for i in range(0, len(energia), fps_audio):
-        bloque = energia[i : i + fps_audio]
-        if len(bloque) > 0:
-            puntuaciones.append(np.max(bloque))
-            
-    return np.array(puntuaciones)
+def limpiar_archivos_antiguos():
+    """Borra archivos mp4 creados hace más de 15 minutos para liberar espacio."""
+    ahora = time.time()
+    archivos = glob.glob("*.mp4")
+    for archivo in archivos:
+        if os.stat(archivo).st_mtime < ahora - 900:
+            try:
+                os.remove(archivo)
+            except:
+                pass
 
-def extraer_mejores_clips(video_path, duracion_str, max_clips=5):
-    duraciones = {"30s": 30, "1:00": 60, "1:30": 90}
-    duracion_seg = duraciones.get(duracion_str, 30)
+def descargar_video_url(url):
+    limpiar_archivos_antiguos()
+    output_path = f"video_{int(time.time())}.mp4"
     
-    archivos_finales = []
+    ydl_opts = {
+        'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        'outtmpl': output_path,
+        'quiet': True,
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
     
-    with VideoFileClip(video_path) as video:
-        puntuaciones = analizar_puntuacion_viral(video)
-        
-        indices_top = np.argsort(puntuaciones)[::-1]
-        
-        tiempos_seleccionados = []
-        for idx in indices_top:
-            if len(tiempos_seleccionados) >= max_clips:
-                break
-            
-            if all(abs(idx - t) > duracion_seg for t in tiempos_seleccionados):
-                if idx + duracion_seg <= video.duration:
-                    tiempos_seleccionados.append(idx)
-        
-        for i, t_inicio in enumerate(sorted(tiempos_seleccionados)):
-            t_fin = t_inicio + duracion_seg
-            
-            clip = video.subclipped(t_inicio, t_fin)
-            
-            score_viral = min(int((puntuaciones[t_inicio] / (puntuaciones.max() + 0.0001)) * 100 + 20), 100)
-            
-            nombre = f"Viral_Clip_{i+1}_Score_{score_viral}.mp4"
-            
-            clip.write_videofile(nombre, codec="libx264", audio_codec="aac", fps=24, logger=None)
-            
-            archivos_finales.append({
-                "path": nombre, 
-                "score": score_viral,
-                "timestamp": f"{int(t_inicio // 60)}:{int(t_inicio % 60):02d}"
-            })
-            
-    return archivos_finales
+    return output_path
