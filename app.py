@@ -1,12 +1,10 @@
 import streamlit as st
 
-# Configuración de la página
 st.set_page_config(page_title="AI Clip Master", layout="wide")
 
 st.title("🎬 AI Clip Master: Recortes Automáticos")
 st.markdown("Sube tu archivo y nuestra IA encontrará los mejores momentos por ti.")
 
-# Creación de las dos particiones (pestañas)
 tab1, tab2 = st.tabs(["🎥 Clips para Videos (RRSS/Youtube)", "🍿 Clips para Películas"])
 
 with tab1:
@@ -37,6 +35,5 @@ with tab2:
     if st.button("Extraer Mejores Momentos"):
         st.info("Escaneando banda sonora y cambios de escena...")
 
-# Pie de página
 st.sidebar.markdown("### Configuración de IA")
 st.sidebar.write("Modelo: GPT-4o / Whisper / MoviePy")
