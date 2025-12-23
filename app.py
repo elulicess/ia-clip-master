@@ -1,39 +1,43 @@
 import streamlit as st
+import os
+from processor import crear_clip, detectar_momentos_clave
 
-st.set_page_config(page_title="AI Clip Master", layout="wide")
+st.set_page_config(page_title="AI Clip Master", page_icon="🎬", layout="centered")
 
-st.title("🎬 AI Clip Master: Recortes Automáticos")
-st.markdown("Sube tu archivo y nuestra IA encontrará los mejores momentos por ti.")
+st.title("🎬 AI Clip Master")
+st.subheader("Crea clips virales automáticamente con IA")
 
-tab1, tab2 = st.tabs(["🎥 Clips para Videos (RRSS/Youtube)", "🍿 Clips para Películas"])
+tab_videos, tab_pelis = st.tabs(["🎥 Videos Cortos", "🍿 Películas"])
 
-with tab1:
-    st.header("Procesador de Videos Cortos")
-    video_file = st.file_uploader("Sube tu video aquí", type=['mp4', 'mov', 'avi'], key="video_up")
+with tab_videos:
+    uploaded_file = st.file_uploader("Elige un video para procesar", type=['mp4', 'mov'])
     
-    duration = st.select_slider(
-        "Selecciona la duración del clip:",
-        options=["30s", "1:00", "1:30"],
-        key="dur_video"
+    duracion_elegida = st.select_slider(
+        "Duración del resultado:",
+        options=["30s", "1:00", "1:30"]
     )
-    
-    if st.button("Generar Clips de Video"):
-        st.info("Analizando los momentos más virales...")
 
-with tab2:
-    st.header("Procesador de Películas")
-    movie_file = st.file_uploader("Sube la película", type=['mp4', 'mkv'], key="movie_up")
-    
-    movie_duration = st.select_slider(
-        "Selecciona la duración del clip:",
-        options=["30s", "1:00", "1:30"],
-        key="dur_movie"
-    )
-    
-    intensity = st.slider("Nivel de 'importancia' (Detección de acción/clímax)", 0, 100, 80)
+    if st.button("🚀 Iniciar Proceso de IA"):
+        if uploaded_file:
+            temp_name = "input_ia_temp.mp4"
+            with open(temp_name, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            with st.spinner("La IA está buscando el mejor momento..."):
+                try:
+                    inicio = detectar_momentos_clave(temp_name)
+                    resultado = crear_clip(temp_name, inicio, duracion_elegida)
+                    
+                    st.success("¡Clip generado con éxito!")
+                    st.video(resultado)
+                    
+                    with open(resultado, "rb") as file:
+                        st.download_button("📥 Descargar mi Clip", file, file_name=resultado)
+                
+                except Exception as e:
+                    st.error(f"Hubo un problema procesando el video: {e}")
+        else:
+            st.warning("Primero debes subir un archivo de video.")
 
-    if st.button("Extraer Mejores Momentos"):
-        st.info("Escaneando banda sonora y cambios de escena...")
-
-st.sidebar.markdown("### Configuración de IA")
-st.sidebar.write("Modelo: GPT-4o / Whisper / MoviePy")
+with tab_pelis:
+    st.info("Esta partición usará algoritmos avanzados para detectar cambios de escena cinematográficos.")
