@@ -2,3 +2,4 @@ streamlit
 moviepy
 numpy
 yt-dlp
+ffmpeg
