@@ -1,3 +1,5 @@
 streamlit
 moviepy
 numpy
+openai-whisper
+torch
