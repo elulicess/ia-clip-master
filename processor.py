@@ -7,6 +7,7 @@ def detectar_momentos_clave(video_path):
         if video.audio is None:
             return 0
         
+
         fps_audio = 44100
         audio_frames = video.audio.to_soundarray(fps=fps_audio)
         
@@ -15,13 +16,14 @@ def detectar_momentos_clave(video_path):
         return np.argmax(volumen) / fps_audio
 
 def crear_clip(video_path, start_time, duration_str):
-    """Recorta el video basándose en el tiempo de inicio y la duración elegida."""
+    """Recorta el video usando la nueva sintaxis de MoviePy 2.0+"""
     duraciones = {"30s": 30, "1:00": 60, "1:30": 90}
     seconds = duraciones.get(duration_str, 30)
     
     with VideoFileClip(video_path) as video:
         end_time = min(start_time + seconds, video.duration)
-        new_clip = video.subclip(start_time, end_time)
+        
+        new_clip = video.subclipped(start_time, end_time)
         
         output_name = f"clip_{duration_str.replace(':', '_')}.mp4"
         
