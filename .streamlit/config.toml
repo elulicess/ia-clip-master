@@ -1,0 +1,3 @@
+[server]
+maxUploadSize = 1000  # Eleva el límite de subida a 1GB
+enableCORS = false    # Evita problemas de conexión en algunos navegadores
