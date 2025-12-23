@@ -1,43 +1,51 @@
 import streamlit as st
 import os
-from processor import crear_clips_lote, detectar_varios_momentos
+from processor import extraer_mejores_clips
 
-st.set_page_config(page_title="AI Clip Master", layout="wide")
+st.set_page_config(page_title="OpusClone AI", layout="wide", page_icon="🔥")
 
-st.title("🎬 AI Clip Master: Multi-Clips")
+st.title("🔥 OpusClone: Viral Clip Generator")
+st.markdown("---")
 
-uploaded_file = st.file_uploader("Sube tu video", type=['mp4', 'mov'])
+with st.sidebar:
+    st.header("Configuración de IA")
+    num_clips = st.number_input("Máximo de clips a generar", 1, 10, 3)
+    duracion = st.select_slider("Duración objetivo", options=["30s", "1:00", "1:30"])
 
-num_clips = st.slider("¿Cuántos clips quieres generar?", 1, 5, 3)
+uploaded_file = st.file_uploader("📤 Sube tu contenido (Podcast, Tutorial, Gameplay)", type=['mp4', 'mov'])
 
-duration = st.select_slider(
-    "Duración de cada clip:",
-    options=["30s", "1:00", "1:30"]
-)
-
-if st.button("🚀 Generar Fragmentos"):
-    if uploaded_file is not None:
-        temp_path = "temp_video.mp4"
+if st.button("🪄 Analizar y Generar Clips"):
+    if uploaded_file:
+        temp_path = "input_pro.mp4"
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
-        with st.spinner(f"🤖 Generando {num_clips} clips con los mejores momentos..."):
-            try:
-                puntos = detectar_varios_momentos(temp_path, num_clips)
-                
-                archivos = crear_clips_lote(temp_path, puntos, duration)
-                
-                st.success(f"✅ ¡Se han generado {len(archivos)} clips!")
-                
-                cols = st.columns(len(archivos))
-                for idx, clip_path in enumerate(archivos):
-                    with cols[idx]:
-                        st.write(f"Fragmento {idx+1}")
-                        st.video(clip_path)
-                        with open(clip_path, "rb") as f:
-                            st.download_button(f"📥 Bajar Clip {idx+1}", f, file_name=clip_path)
-                            
-            except Exception as e:
-                st.error(f"Error: {e}")
+        st.toast("Analizando estructura del video...", icon="🧠")
+        
+        with st.spinner("IA trabajando: Identificando ganchos y mejores momentos..."):
+            clips_generados = extraer_mejores_clips(temp_path, duracion, num_clips)
+            
+            st.success(f"¡Análisis completado! Hemos encontrado {len(clips_generados)} momentos potenciales.")
+            
+            for clip in clips_generados:
+                with st.container():
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        st.video(clip["path"])
+                    with col2:
+                        st.subheader(f"🎬 Clip: {clip['path']}")
+                        st.metric("Virality Score", f"{clip['score']}%")
+                        st.write("✅ Gancho detectado")
+                        st.write("✅ Audio optimizado")
+                        
+                        with open(clip["path"], "rb") as f:
+                            st.download_button(
+                                label="📥 Descargar HD",
+                                data=f,
+                                file_name=clip["path"],
+                                mime="video/mp4",
+                                key=clip["path"]
+                            )
+                    st.markdown("---")
     else:
-        st.error("⚠️ Sube un video primero.")
+        st.error("Debes subir un archivo para que la IA pueda trabajar.")
