@@ -1,41 +1,93 @@
 import streamlit as st
-import os
-from processor import extraer_mejores_clips, descargar_video_url, limpiar_archivos_antiguos
+from groq import Groq
+from gtts import gTTS
+import time
 
+# --- 1. CONFIGURACIÓN Y ESTILO eDEX-UI ---
+st.set_page_config(page_title="TERMINAL_CORE", layout="wide")
 
-st.set_page_config(page_title="IA Clip Master", layout="wide")
-st.title("🎬 IA Clip Master (Estilo OpusClip)")
+st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"], .stApp, [data-testid="stHeader"] {
+        background-color: #000000 !important;
+    }
+    * {
+        color: #00ff41 !important;
+        font-family: 'Courier New', monospace !important;
+    }
+    .stChatMessage {
+        background-color: #000 !important;
+        border: 1px solid #00ff41 !important;
+        border-radius: 0px !important;
+        margin: 10px auto !important;
+        width: 80% !important;
+    }
+    .stChatInputContainer { border-top: 1px solid #00ff41 !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
-opcion = st.sidebar.radio("Fuente del video:", ["Link de YouTube/TikTok", "Archivo MP4"])
-video_a_procesar = None
+# --- 2. CONEXIÓN SEGURA (Usa secrets de Streamlit) ---
+# En Streamlit Cloud, pondrás tu llave en 'Settings > Secrets'
+try:
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+except:
+    st.error("⚠️ Configura la GROQ_API_KEY en los Secrets de Streamlit.")
 
-if opcion == "Link de YouTube/TikTok":
-    url = st.text_input("Pega el enlace aquí:")
-    if url and st.button("Descargar Video"):
-        with st.spinner("Descargando..."):
-            video_a_procesar = descargar_video_url(url)
-            st.success("¡Video listo!")
-else:
-    archivo = st.file_uploader("Sube tu archivo", type=["mp4"])
-    if archivo:
-        video_a_procesar = "temp_local.mp4"
-        with open(video_a_procesar, "wb") as f:
-            f.write(archivo.getbuffer())
+# --- 3. SECUENCIA DE ARRANQUE ---
+if "boot" not in st.session_state:
+    boot_log = st.empty()
+    log = ""
+    for line in ["> LOADING CORE...", "> SYMMETRY OK...", "> ACCESS GRANTED"]:
+        log += line + "\n"
+        boot_log.code(log)
+        time.sleep(0.4)
+    boot_log.empty()
+    st.session_state.boot = True
 
-if video_a_procesar:
-    num = st.sidebar.slider("¿Cuántos clips quieres?", 1, 5, 3)
-    tiempo = st.sidebar.select_slider("Duración:", ["30s", "1:00", "1:30"])
+# --- 4. INTERFAZ SIMÉTRICA ---
+st.title("📟 DEV-MASTER // WEB_CONSOLE")
+col1, col2, col3 = st.columns([1, 4, 1])
 
-    if st.button("🔥 Generar Clips Virales"):
-        with st.spinner("Analizando momentos clave..."):
-            clips = extraer_mejores_clips(video_a_procesar, tiempo, num)
+with col1:
+    st.write("SYS: ONLINE")
+with col3:
+    if st.button("RESET"):
+        st.session_state.mensajes = []
+        st.rerun()
+
+if "mensajes" not in st.session_state:
+    st.session_state.mensajes = []
+
+with col2:
+    for m in st.session_state.mensajes:
+        with st.chat_message(m["role"]):
+            st.write(f"{m['role'].upper()} > {m['content']}")
+
+    if prompt := st.chat_input("Escribe comando..."):
+        st.session_state.mensajes.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(f"USER > {prompt}")
+
+        with st.chat_message("assistant"):
+            res_placeholder = st.empty()
+            full_res = ""
             
-            for c in clips:
-                col1, col2 = st.columns([2, 1])
-                with col1:
-                    st.video(c["path"])
-                with col2:
-                    st.write(f"📍 Inicia en: {c['timestamp']}")
-                    with open(c["path"], "rb") as f:
-                        st.download_button(f"📥 Descargar {c['path']}", f, file_name=c['path'])
-                st.divider()
+            stream = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "system", "content": "IA Tactica. Responde corto."}] + st.session_state.mensajes,
+                stream=True
+            )
+
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    full_res += chunk.choices[0].delta.content
+                    res_placeholder.markdown(full_res + "█")
+            
+            res_placeholder.markdown(full_res)
+            
+            # Voz
+            tts = gTTS(text=full_res[:200], lang='es')
+            tts.save("voz.mp3")
+            st.audio("voz.mp3", format="audio/mp3", autoplay=True)
+
+            st.session_state.mensajes.append({"role": "assistant", "content": full_res})
